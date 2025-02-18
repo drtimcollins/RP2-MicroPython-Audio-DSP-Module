@@ -25,8 +25,9 @@ INTERP0_BASE_1AND0 = const(0x0bc >> 2) # On write, the lower 16 bits go to BASE0
 class sineOsc:
     def __init__(self, buffer):
         self.phase = 0
-        self.buf = buffer
+        self.buf = uctypes.addressof(buffer)
         self.sineTableAddress = uctypes.addressof(sineTable)
+        self.limit = len(buffer) >> 1
 
     # Fills the buffer with sine wave samples.
     @micropython.viper
@@ -37,10 +38,9 @@ class sineOsc:
 
         n = 0
         i = int(self.phase)
-        bufP = ptr16(uctypes.addressof(self.buf))
-        limit = (int(len(self.buf)) >> 1)
+        bufP   = ptr16(self.buf)        
         sinTab = ptr16(self.sineTableAddress)
-        while n < limit:
+        while n < int(self.limit):
             i0 = (i >> 8) & 0x00FF	# i0 = index to sine sample (rounded down to int)
             i1 = (i0 + 1) & 0x00FF	# i1 = index to sine sample (rounded up to int)
             sio[INTERP0_BASE_1AND0] = (sinTab[i1] << 16) | sinTab[i0]
