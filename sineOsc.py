@@ -1,7 +1,8 @@
-
 # High speed sine wave generator class.
 # Copyright (c) 2025 Tim Collins - MIT License
 # See https://github.com/drtimcollins/RP2-MicroPython-Synth-Modules/blob/main/LICENSE
+
+# Frequency is fixed at the moment...
 
 import uctypes
 from micropython import const
@@ -22,10 +23,11 @@ INTERP0_PEEK_LANE1 = const(0x0a4 >> 2) # Read LANE1 result, without altering any
 INTERP0_BASE_1AND0 = const(0x0bc >> 2) # On write, the lower 16 bits go to BASE0, upper bits to BASE1 simultaneously.
 
 class sineOsc:
-    def __init__(self):
+    def __init__(self, buffer):
         self.phase = 0
-        self.buf = []
+        self.buf = buffer
         self.sineTableAddress = uctypes.addressof(sineTable)
+
     # Fills the buffer with sine wave samples.
     @micropython.viper
     def processBuffer(self):
@@ -46,6 +48,7 @@ class sineOsc:
             sample = sio[INTERP0_PEEK_LANE1]	# Interpolates between sin[i0] and sin[i1]
 
             bufP[n] = sample
-            i = i + 0x0800          # Change this for different frequencies
+            i = i + 0x0555          # Change this for different frequencies (this is approx 500Hz)
+                                    # Increment = (frequency * 65536) / Fs
             n += 1
         self.phase = i

@@ -11,7 +11,7 @@ from machine import I2S, Pin, mem32
 from micropython import const
 from sineOsc import sineOsc         # Requires sineOsc.py and sineTable.dat to be in RP2 filespace
 
-led = Pin('LED')
+led = Pin('LED')                    # LED is used as simple indicator of processor load.
 
 Fs = 24000                              # Sample rate = 24 kHz
 BUFFER_LEN = 2000                       # Shorter buffer = less latency but higher processing overhead
@@ -23,14 +23,12 @@ audio_out = I2S(0, sck=sck, ws=ws, sd=sd, mode=I2S.TX,
 print('I2S enabled')
 
 buf = bytearray(BUFFER_LEN)             # Buffer used to pass data to the I2S handler
-sOsc = sineOsc()
-
-sOsc.buf = buf
+sOsc = sineOsc(buf)                     # Create sine wave generator
 
 try:
     while True:                         # Infinite loop - press Ctrl-C to exit
-        led.on()                        # LED used as simple indicator of processor load
-        sOsc.processBuffer()
+        led.on()                        
+        sOsc.processBuffer()            # Fills buf with samples
         led.off()
         audio_out.write(buf)
 except (KeyboardInterrupt, Exception) as e:
