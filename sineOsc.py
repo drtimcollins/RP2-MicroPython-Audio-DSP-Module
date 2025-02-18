@@ -1,4 +1,7 @@
+
 # High speed sine wave generator class.
+# Copyright (c) 2025 Tim Collins - MIT License
+# See https://github.com/drtimcollins/RP2-MicroPython-Synth-Modules/blob/main/LICENSE
 
 import uctypes
 from micropython import const
