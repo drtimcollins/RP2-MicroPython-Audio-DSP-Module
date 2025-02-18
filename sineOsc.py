@@ -2,8 +2,6 @@
 # Copyright (c) 2025 Tim Collins - MIT License
 # See https://github.com/drtimcollins/RP2-MicroPython-Synth-Modules/blob/main/LICENSE
 
-# Frequency is fixed at the moment...
-
 import uctypes
 from micropython import const
 
@@ -23,32 +21,32 @@ INTERP0_PEEK_LANE1 = const(0x0a4 >> 2) # Read LANE1 result, without altering any
 INTERP0_BASE_1AND0 = const(0x0bc >> 2) # On write, the lower 16 bits go to BASE0, upper bits to BASE1 simultaneously.
 
 class sineOsc:
-    def __init__(self, buffer):
+    def __init__(self, outputBuffer):
         self.phase = 0
-        self.buf = uctypes.addressof(buffer)
+        self.outBufferAddress = uctypes.addressof(outputBuffer)
         self.sineTableAddress = uctypes.addressof(sineTable)
-        self.limit = len(buffer) >> 1
+        self.numSamples = len(outputBuffer) >> 1
 
     # Fills the buffer with sine wave samples.
     @micropython.viper
-    def processBuffer(self):
+    def processBuffer(self, deltaPhase : int):
         sio = ptr32(SIO_BASE)                 # Set up hardware interpolator
         sio[INTERP0_CTRL_LANE0] = 0x00207c00  # Set Blend bit, Mask = full width
         sio[INTERP0_CTRL_LANE1] = 0x0000fc00  # Set Signed bit, Mask = full width
 
         n = 0
         i = int(self.phase)
-        bufP   = ptr16(self.buf)        
-        sinTab = ptr16(self.sineTableAddress)
-        while n < int(self.limit):
+        pOutBuffer = ptr16(self.outBufferAddress)        
+        pSineTable = ptr16(self.sineTableAddress)
+        while n < int(self.numSamples):
             i0 = (i >> 8) & 0x00FF	# i0 = index to sine sample (rounded down to int)
             i1 = (i0 + 1) & 0x00FF	# i1 = index to sine sample (rounded up to int)
-            sio[INTERP0_BASE_1AND0] = (sinTab[i1] << 16) | sinTab[i0]
+            sio[INTERP0_BASE_1AND0] = (pSineTable[i1] << 16) | pSineTable[i0]
             sio[INTERP0_ACCUM1] = i # Lowest 8 bits of i used for interpolation weight
             sample = sio[INTERP0_PEEK_LANE1]	# Interpolates between sin[i0] and sin[i1]
 
-            bufP[n] = sample
-            i = i + 0x0555          # Change this for different frequencies (this is approx 500Hz)
-                                    # Increment = (frequency * 65536) / Fs
+            pOutBuffer[n] = sample
+            i = i + deltaPhase                  # deltaPhase = (frequency * 65536) / Fs
             n += 1
         self.phase = i
+

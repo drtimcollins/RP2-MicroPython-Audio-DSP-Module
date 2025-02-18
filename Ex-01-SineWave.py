@@ -28,7 +28,7 @@ sOsc = sineOsc(buf)                     # Create sine wave generator
 try:
     while True:                         # Infinite loop - press Ctrl-C to exit
         led.on()                        
-        sOsc.processBuffer()            # Fills buf with samples
+        sOsc.processBuffer(0x0555)      # Fills buf with samples, 0x555 = ~500 Hz
         led.off()
         audio_out.write(buf)
 except (KeyboardInterrupt, Exception) as e:
