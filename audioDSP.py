@@ -74,3 +74,50 @@ class DCA:
             pOutBuffer[n] = (pInBuffer[n] * pGainBuffer[n]) >> 16	# Fixed point multiplication
             n += 1
 
+#######################################################################
+# AR - Attack-Release envelope generator
+#######################################################################
+class AR:
+    def __init__(self, outputBuffer):
+        self.outBufferAddress  = uctypes.addressof(outputBuffer)	# Store memory addresses of out buffer
+        self.numSamples = len(outputBuffer) >> 2
+        self.envPhase = 0		# 0 = off, 1 = Attacking, 2 = Releasing
+        self.envValue = 0
+        self.setParameters(20, 10000)
+    
+    def setParameters(self, attackTime, releaseTime):				# Times are measured in samples
+        self.attDelta = 0xFFFF // attackTime
+        self.relDelta = 0xFFFF // releaseTime
+        
+    @micropython.viper
+    def process(self, trigger: bool):
+        n = 0
+        pOutBuffer  = ptr32(self.outBufferAddress)					# Treat buffers as arrays of 32-bit words
+        if trigger:
+            p = 1
+        else:
+            p = int(self.envPhase)
+        x = int(self.envValue)        
+        ad = int(self.attDelta)
+        rd = int(self.relDelta)
+        while n < int(self.numSamples):
+            if p == 1:
+                x += ad
+                if x > 0xFFFF:
+                    x = 0xFFFF
+                    p = 2
+            elif p == 2:
+                x -= rd
+                if x < 0:
+                    x = 0
+                    p = 0
+            else:
+                x = 0
+            pOutBuffer[n] = x
+            n += 1
+        self.envValue = x
+        self.envPhase = p
+        
+                    
+                
+        

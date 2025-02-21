@@ -9,7 +9,7 @@
 import time, struct, uctypes
 from machine import I2S, Pin, mem32
 from micropython import const
-from audioDSP import DCO, DCA         # Requires sineOsc.py and sineTable.dat to be in RP2 filespace
+from audioDSP import DCO, DCA, AR       # Requires sineOsc.py and sineTable.dat to be in RP2 filespace
 
 led = Pin('LED')                    # LED is used as simple indicator of processor load.
 
@@ -24,17 +24,16 @@ print('I2S enabled')
 
 sineBuf = bytearray(BUFFER_LEN)
 gainBuf = bytearray(BUFFER_LEN)
-outBuf = bytearray(BUFFER_LEN)
+outBuf  = bytearray(BUFFER_LEN)
 dco = DCO(sineBuf)                     # Create sine wave generator
 dca = DCA(sineBuf, gainBuf, outBuf)
-
-for n in range(BUFFER_LEN/4):
-    struct.pack_into('<I',gainBuf,n*4,0xFFFF)	# Set gain to a constant 0xFFFF (maximum)
+eg  = AR(gainBuf)
 
 try:
     while True: 								# Infinite loop - press Ctrl-C to exit
-        led.on()                        
+        led.on()
         dco.process(0x0555)   			# Fills buffer with samples, 0x555 = ~500 Hz
+        eg.process(eg.envPhase == 0)
         dca.process()
         I2S.shift(buf=outBuf, bits=32, shift = 12)
         led.off()
