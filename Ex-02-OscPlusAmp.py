@@ -9,34 +9,34 @@
 import time, struct, uctypes
 from machine import I2S, Pin, mem32
 from micropython import const
-from sineOsc import sineOsc         # Requires sineOsc.py and sineTable.dat to be in RP2 filespace
-from DCA import DCA
+from audioDSP import DCO, DCA         # Requires sineOsc.py and sineTable.dat to be in RP2 filespace
 
 led = Pin('LED')                    # LED is used as simple indicator of processor load.
 
 Fs = 24000                              # Sample rate = 24 kHz
-BUFFER_LEN = 2000                       # Shorter buffer = less latency but higher processing overhead
+BUFFER_LEN = 4000                       # Shorter buffer = less latency but higher processing overhead
 
 sck,ws,sd = Pin(18), Pin(19), Pin(20)   # Also known as bit clock, LR clock, and data
 audio_out = I2S(0, sck=sck, ws=ws, sd=sd, mode=I2S.TX,
-                bits=16, format=I2S.MONO, rate=Fs, ibuf=BUFFER_LEN)
+                bits=32, format=I2S.MONO, rate=Fs, ibuf=BUFFER_LEN)
 
 print('I2S enabled')
 
 sineBuf = bytearray(BUFFER_LEN)
 gainBuf = bytearray(BUFFER_LEN)
 outBuf = bytearray(BUFFER_LEN)
-sOsc = sineOsc(sineBuf)                     # Create sine wave generator
+dco = DCO(sineBuf)                     # Create sine wave generator
 dca = DCA(sineBuf, gainBuf, outBuf)
 
-for n in range(BUFFER_LEN/2):
-    struct.pack_into('<H',gainBuf,n*2,300)
+for n in range(BUFFER_LEN/4):
+    struct.pack_into('<I',gainBuf,n*4,0xFFFF)	# Set gain to a constant 0xFFFF (maximum)
 
 try:
-    while True:                         # Infinite loop - press Ctrl-C to exit
+    while True: 								# Infinite loop - press Ctrl-C to exit
         led.on()                        
-        sOsc.processBuffer(0x0555)      # Fills buf with samples, 0x555 = ~500 Hz
-        dca.processBuffer()
+        dco.process(0x0555)   			# Fills buffer with samples, 0x555 = ~500 Hz
+        dca.process()
+        I2S.shift(buf=outBuf, bits=32, shift = 10)
         led.off()
         audio_out.write(outBuf)
 except (KeyboardInterrupt, Exception) as e:

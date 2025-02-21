@@ -1,4 +1,4 @@
-# High speed sine wave generator class.
+# Real-time audio synthesis classes
 # Copyright (c) 2025 Tim Collins - MIT License
 # See https://github.com/drtimcollins/RP2-MicroPython-Synth-Modules/blob/main/LICENSE
 
@@ -20,23 +20,26 @@ INTERP0_PEEK_LANE0 = const(0x0a0 >> 2) # Read LANE0 result, without altering any
 INTERP0_PEEK_LANE1 = const(0x0a4 >> 2) # Read LANE1 result, without altering any internal state (PEEK).
 INTERP0_BASE_1AND0 = const(0x0bc >> 2) # On write, the lower 16 bits go to BASE0, upper bits to BASE1 simultaneously.
 
-class sineOsc:
-    def __init__(self, outputBuffer):
+#######################################################################
+# DCO - Digitally Controlled Oscillator. Real-time sine wave generator.
+#######################################################################
+class DCO:
+    def __init__(self, outputBuffer):   # 32-bit outputBuffer
         self.phase = 0
         self.outBufferAddress = uctypes.addressof(outputBuffer)
         self.sineTableAddress = uctypes.addressof(sineTable)
-        self.numSamples = len(outputBuffer) >> 1
+        self.numSamples = len(outputBuffer) >> 2
 
     # Fills the buffer with sine wave samples.
     @micropython.viper
-    def processBuffer(self, deltaPhase : int):
+    def process(self, deltaPhase : int):
         sio = ptr32(SIO_BASE)                 # Set up hardware interpolator
         sio[INTERP0_CTRL_LANE0] = 0x00207c00  # Set Blend bit, Mask = full width
         sio[INTERP0_CTRL_LANE1] = 0x0000fc00  # Set Signed bit, Mask = full width
 
         n = 0
         i = int(self.phase)
-        pOutBuffer = ptr16(self.outBufferAddress)        
+        pOutBuffer = ptr32(self.outBufferAddress)        
         pSineTable = ptr16(self.sineTableAddress)
         while n < int(self.numSamples):
             i0 = (i >> 8) & 0x00FF	# i0 = index to sine sample (rounded down to int)
@@ -46,7 +49,28 @@ class sineOsc:
             sample = sio[INTERP0_PEEK_LANE1]	# Interpolates between sin[i0] and sin[i1]
 
             pOutBuffer[n] = sample
+            
             i = i + deltaPhase                  # deltaPhase = (frequency * 65536) / Fs
             n += 1
         self.phase = i
+
+#######################################################################
+# DCA - Digitally Controlled Amplifier.
+#######################################################################
+class DCA:
+    def __init__(self, inputBuffer, gainBuffer, outputBuffer):
+        self.outBufferAddress  = uctypes.addressof(outputBuffer)	# Store memory addresses of in and out buffers
+        self.inBufferAddress   = uctypes.addressof(inputBuffer)
+        self.gainBufferAddress = uctypes.addressof(gainBuffer)
+        self.numSamples = len(outputBuffer) >> 2
+
+    @micropython.viper
+    def process(self):
+        n = 0
+        pOutBuffer  = ptr32(self.outBufferAddress)					# Treat buffers as arrays of 32-bit words
+        pInBuffer   = ptr32(self.inBufferAddress)        
+        pGainBuffer = ptr32(self.gainBufferAddress)        
+        while n < int(self.numSamples):
+            pOutBuffer[n] = (pInBuffer[n] * pGainBuffer[n]) >> 16	# Fixed point multiplication
+            n += 1
 
