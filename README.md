@@ -14,5 +14,5 @@ All processing is done using the MicroPython Viper emitter. The DCO uses a sinew
 
 1. **Ex-01-SineWave.py**: Simple test example. Plays a continuous sine wave tone of approximately 500Hz to an I2S output.
 2. **Ex-02-OscPlusAmp.py**: Like example 1 but adds a DCA into the audio signal chain.
-3. **Ex-03-EnvGen**: Adds a simple attack-release envelope generator to example 2.
+3. **Ex-03-EnvGen.py**: Adds a simple attack-release envelope generator to example 2.
 
