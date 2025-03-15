@@ -9,7 +9,7 @@
 import time, struct, uctypes
 from machine import I2S, Pin, mem32
 from micropython import const
-from audioDSP import DCO, DCA, AR       # Requires sineOsc.py and sineTable.dat to be in RP2 filespace
+from audioDSP import DCO, DCA, AR       # Requires audioDSP.py and sineTable.dat to be in RP2 filespace
 
 led = Pin('LED')                    # LED is used as simple indicator of processor load.
 
